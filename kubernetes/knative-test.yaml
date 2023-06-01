@@ -1,0 +1,42 @@
+apiVersion: sources.knative.dev/v1
+kind: ContainerSource
+metadata:
+  name: gitlab-source-knative
+spec:
+  template:
+    spec:
+      containers:
+        - image: direktiv/gitlab-listener
+          name: gitlab-source-knative
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+  sink:
+    uri: http://direktiv-eventing.default/direktiv
+---
+apiVersion: v1 
+kind: Service
+metadata:
+  name: gitlab-listener-service-knative
+spec:
+  selector:
+    sources.knative.dev/containerSource: gitlab-source-knative
+  ports:
+  - port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitlab-ingress-knative
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /gitlab
+        pathType: Prefix
+        backend:
+          service:
+            name: gitlab-listener-service-knative
+            port:
+              number: 8080

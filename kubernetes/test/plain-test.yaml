@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-source-plain
+  labels:
+    app: gitlab-source-plain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-source-plain
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        app: gitlab-source-plain
+    spec:
+      containers:
+        - name: gitlab-source-plain
+          image: localhost:5000/gitlab
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+          env:
+          - name: DIREKTIV_GITLAB_ENDPOINT
+            value: http://direktiv-eventing.default/direktiv
+          - name: DIREKTIV_GITLAB_DEBUG
+            value: "true"
+---
+apiVersion: v1 
+kind: Service
+metadata:
+  name: gitlab-listener-service-plain
+spec:
+  selector:
+    app: gitlab-source-plain
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitlab-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /gitlab
+        pathType: Prefix
+        backend:
+          service:
+            name: gitlab-listener-service-plain
+            port:
+              number: 8080
